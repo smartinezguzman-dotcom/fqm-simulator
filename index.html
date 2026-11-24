@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Simulador covenant FQM</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* One 16:9 slide in the TFM deck style: case stickers and levers on the left, one two-panel chart across centre and right. Single light look. */
+:root {
+  --bg: #DCD9D1; --paper: #F7F6F3; --card: #FDFCFA; --ink: #1C2430; --muted: #4A5568; --line: #D6D2C8; --grid: #E4E0D7;
+  --red: #C8102E; --navy: #1B2538; --bar: #8FA3BF; --bar-neg: #E58C9B; --amber: #B7791F; --ok: #2F7D5B;
+  --display: 'Space Grotesk', 'Segoe UI', Arial, sans-serif; --body: 'Inter', 'Segoe UI', Arial, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px; }
+html.emb body { padding: 0; background: var(--paper); }
+#fit { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+#stage { width: 1920px; height: 1080px; flex: none; background: var(--paper); padding: 64px 128px 0; position: relative; transform-origin: center center; }
+.eyebrow { font-size: 24px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: var(--red); margin: 0 0 10px; }
+h1 { font-family: var(--display); font-size: 54px; font-weight: 600; line-height: 1.1; margin: 0 0 30px; }
+.main { display: grid; grid-template-columns: 520px 1fr; gap: 48px; height: 808px; }
+.ctl { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+.pub { font-size: 17px; } .pub b { color: var(--ink); }
+.cases { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.case { height: 96px; border: 2px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; text-align: left;
+  padding: 14px 14px 12px; display: flex; flex-direction: column; justify-content: space-between; font-family: var(--body); transition: background .2s, color .2s, border-color .2s; }
+.case:hover { border-color: var(--ink); }
+.case b { font-family: var(--display); font-size: 20px; letter-spacing: -0.2px; font-weight: 600; line-height: 1; }
+.case span { font-size: 16px; line-height: 1.25; color: var(--muted); }
+.case[aria-pressed="true"] { background: var(--navy); border-color: var(--navy); color: #fff; }
+.case[aria-pressed="true"] span { color: #C9D1DE; }
+.case.mod { background: #E9E6DF; border-color: #E0DCD3; color: #9AA0AA; }
+.case.mod span { color: #A7ACB4; }
+.cases { position: relative; }
+#custom { position: absolute; right: 0; top: -26px; margin: 0; font-size: 15px; font-weight: 600; color: #fff; background: var(--red); padding: 2px 10px; pointer-events: none; white-space: nowrap; }
+.c { background: var(--card); padding: 8px 20px 8px; border-top: 4px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+.c.on { border-top-color: var(--red); }
+.hd { font-size: 16px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin: 0 0 2px; }
+.row { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 36px; }
+.lab { font-size: 21px; color: var(--muted); }
+.val { font-family: var(--display); font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.val small { font-family: var(--body); font-size: 17px; font-weight: 400; color: var(--muted); }
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 30px; background: transparent; margin: 0; cursor: pointer; }
+input[type=range]::-webkit-slider-runnable-track { height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--red) var(--p, 50%), var(--line) var(--p, 50%)); }
+input[type=range]::-moz-range-track { height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--red) var(--p, 50%), var(--line) var(--p, 50%)); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%; background: var(--card); border: 5px solid var(--red); margin-top: -10px; }
+input[type=range]::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: var(--card); border: 5px solid var(--red); }
+.rw { position: relative; }
+.rw i { position: absolute; top: 22px; width: 2px; height: 8px; margin-left: -1px; background: #A9A398; pointer-events: none; }
+.rw i.k { height: 11px; background: var(--ink); }
+.refs { display: flex; gap: 8px; margin-top: 4px; }
+.ref { font: 400 16px var(--body); color: var(--muted); background: transparent; border: 1.5px solid var(--line); padding: 3px 9px; cursor: pointer; white-space: nowrap; }
+.ref b { color: var(--ink); font-weight: 600; }
+.ref[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: #C9D1DE; }
+.ref[aria-pressed="true"] b { color: #fff; }
+html.narrow .ref { font-size: 12px; padding: 2px 5px; }
+.yn { display: flex; align-items: center; gap: 12px; font-size: 21px; font-weight: 600; }
+button.tg { width: 66px; height: 34px; border-radius: 17px; border: 0; background: var(--line); position: relative; cursor: pointer; flex: none; transition: background .2s; }
+button.tg::after { content: ""; position: absolute; top: 4px; left: 4px; width: 26px; height: 26px; border-radius: 50%; background: var(--card); transition: left .2s; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+button.tg[aria-checked="true"] { background: var(--red); }
+button.tg[aria-checked="true"]::after { left: 36px; }
+.seg { display: flex; gap: 0; }
+.seg button { white-space: nowrap; font: 600 18px var(--body); padding: 5px 10px; background: var(--card); color: var(--ink); border: 1.5px solid var(--line); cursor: pointer; }
+.seg button + button { border-left: 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+button:focus-visible, input:focus-visible { outline: 3px solid var(--red); outline-offset: 3px; }
+.chart { display: flex; flex-direction: column; min-width: 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 24px; font-size: 19px; color: var(--muted); }
+.legend i { display: inline-block; width: 28px; vertical-align: middle; margin-right: 8px; border-top: 4px solid var(--red); }
+.legend i.cv { border-top: 3px solid var(--ink); }
+.legend i.ts { border-top: 3px dashed var(--amber); }
+.legend i.br { border: 0; width: 16px; height: 16px; background: var(--bar); }
+.legend i.db { border-top: 4px solid var(--navy); }
+.legend .vw { margin-left: auto; }
+.legend .vw button { font-size: 17px; padding: 3px 12px; }
+.legend i.dv { border: 0; width: 16px; height: 16px; background: #2F7D5B; }
+svg { flex: 1; width: 100%; min-height: 0; display: block; }
+.res { display: flex; align-items: center; gap: 16px; font-size: 21px; white-space: nowrap; }
+.pill { font-weight: 600; font-size: 20px; padding: 6px 14px; color: #fff; background: var(--ok); white-space: nowrap; }
+.pill.w { background: var(--amber); } .pill.b { background: var(--red); }
+.res b { font-variant-numeric: tabular-nums; }
+.foot { position: absolute; left: 128px; right: 128px; bottom: 30px; display: flex; justify-content: space-between; gap: 24px; font-size: 16px; color: var(--muted); }
+/* narrow windows: the slide unfolds into one column */
+html.narrow body { height: auto; }
+html.narrow #fit { height: auto; display: block; }
+html.narrow #stage { width: 100%; height: auto; transform: none !important; padding: 20px 16px 16px; }
+html.narrow h1 { font-size: 26px; margin-bottom: 16px; }
+html.narrow .eyebrow { font-size: 13px; letter-spacing: 2px; }
+html.narrow .main { grid-template-columns: 1fr; height: auto; gap: 18px; }
+html.narrow .case b { font-size: 18px; } html.narrow .case span { font-size: 11px; } html.narrow .case { padding: 8px; }
+html.narrow .lab, html.narrow .yn, html.narrow .res { font-size: 15px; }
+html.narrow .val { font-size: 19px; } html.narrow .val small { font-size: 12px; }
+html.narrow .seg button, html.narrow .legend, html.narrow .pill, html.narrow .hd { font-size: 13px; }
+html.narrow svg { flex: none; height: auto; aspect-ratio: 1280 / 800; }
+html.narrow .res { flex-wrap: wrap; gap: 8px; }
+html.narrow .foot { position: static; display: block; font-size: 12px; margin-top: 14px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div id="fit"><div id="stage">
+  <p class="eyebrow">3 · Proyecciones y estrés · simulador</p>
+  <h1>Apalancamiento del covenant y liquidez, 2027–2036</h1>
+  <div class="main">
+    <div class="ctl">
+      <div class="cases" role="group" aria-label="Casos del modelo">
+        <button type="button" class="case" id="k-management"><b>Management</b><span>11.500 USD/t<br>Reinicio 3T 2027</span></button>
+        <button type="button" class="case" id="k-bank"><b>Banco</b><span>10.000 USD/t<br>Reinicio 3T 2027</span></button>
+        <button type="button" class="case" id="k-low"><b>Low</b><span>8.270 USD/t<br>Sin reinicio</span></button>
+        <p id="custom" hidden>Escenario propio</p>
+      </div>
+      <div class="c" id="c-cu">
+        <div class="row"><label class="lab" for="cu">Precio del cobre</label><span class="val" id="cu-v"></span></div>
+        <div class="rw" id="w-cu"><input type="range" id="cu" min="4000" max="15000" step="10" value="10000"></div>
+        <div class="refs" role="group" aria-label="Precios de referencia"><button type="button" class="ref" data-v="12230">Actual <b>12.230</b></button><button type="button" class="ref" data-v="13570">Media 2026 <b>13.570</b></button><button type="button" class="ref" data-v="10000">Media 2021–25 <b>10.000</b></button></div>
+      </div>
+      <div class="c" id="c-cp">
+        <p class="hd">Cobre Panamá</p>
+        <div class="row"><span class="lab" id="cp-l">Reinicio</span><span class="yn"><span id="cp-t">Sí</span><button type="button" class="tg" role="switch" id="cp" aria-checked="true" aria-labelledby="cp-l"></button></span></div>
+        <div id="cpbox">
+          <div class="row"><label class="lab" for="cd">Fecha de reinicio</label><span class="val" id="cd-v"></span></div>
+          <div class="rw" id="w-cd"><input type="range" id="cd" min="0" max="12" step="0.01" value="0"></div>
+          <div class="row"><span class="lab" id="sh-l">Cuota económica FQM<br><small class="pub">Estado y socios: <b id="pub-v"></b></small></span><span class="seg" role="group" aria-labelledby="sh-l"><button type="button" id="sh0">50 %</button><button type="button" id="sh1">62,5 %</button><button type="button" id="sh2">100 %</button></span></div>
+        </div>
+      </div>
+      <div class="c" id="c-tt">
+        <p class="hd">Taca Taca</p>
+        <div class="row"><label class="lab" for="tk">Primer cobre</label><span class="val" id="tk-v"></span></div>
+        <div class="rw" id="w-tk"><input type="range" id="tk" min="0" max="8" step="0.01" value="0"></div>
+        <div class="row"><label class="lab" for="tt">Capex</label><span class="val" id="tt-v"></span></div>
+        <div class="rw" id="w-tt"><input type="range" id="tt" min="0" max="50" step="0.1" value="0"></div>
+      </div>
+      <div class="c" id="c-lim">
+        <p class="hd">Estructura del Banco</p>
+        <div class="row"><label class="lab" for="lim">Test de desembolso</label><span class="val" id="lim-v"></span></div>
+        <div class="rw" id="w-lim"><input type="range" id="lim" min="2" max="3" step="0.005" value="2.5"></div>
+        <div class="row"><span class="lab" id="av-l">Disponibilidad hasta 2031</span><span class="yn"><span id="av-t">Sí</span><button type="button" class="tg" role="switch" id="av" aria-checked="true" aria-labelledby="av-l"></button></span></div>
+      </div>
+    </div>
+    <div class="chart">
+      <div class="legend">
+        <span><i></i>Deuda neta / EBITDA de caja</span><span><i class="cv"></i>Covenant 3,50x → 3,00x</span>
+        <span><i class="ts"></i>Test de desembolso (periodo de disponibilidad)</span><span><i class="br"></i>Liquidez (USD bn)</span><span><i class="db"></i>Deuda bruta (USD bn)</span><span><i class="dv"></i>Dividendos acumulados</span><span class="seg vw" role="group" aria-label="Panel inferior"><button type="button" id="vw-acc" aria-pressed="true">Accionistas</button><button type="button" id="vw-bank" aria-pressed="false">Banco</button></span>
+      </div>
+      <svg id="g" viewBox="0 0 1280 800" role="img" aria-label="Apalancamiento del covenant y liquidez por año"></svg>
+      <div class="res"><span class="pill" id="pill"></span><span id="res"></span></div>
+    </div>
+  </div>
+  <div class="foot"><span>Fuente: modelo financiero propio (Anexo I), en directo. Cobre real 2026 desde 2029; 2027–28 según el caso; actual: LME cash 20-nov-2026. Intereses del Banco al 7,5 % con prima ECA. n.s.: EBITDA de caja negativo.</span></div>
+</div></div>
+
+<script>
+// JS port of fc/engine.py (FQM 2027-2036 forecast). Returns covenant leverage, liquidity, Bank draws and covenant limits.
+var FQM = (function () {
+  var LB = 2.20462, N = 10, YEARS = [2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035, 2036];
+  var BASE26 = { revenue: 7098, ebitda: 2414, netdebt: 5200, cash: 800, liquidity: 2150 };
+  var PHASING = { 0: [.15, .30, .35, .20, 0, 0, 0, 0, 0, 0], 1: [.10, .25, .25, .25, .15, 0, 0, 0, 0, 0],
+                  2: [.10, .15, .20, .20, .20, .15, 0, 0, 0, 0], 3: [.15, 0, 0, .30, .35, .20, 0, 0, 0, 0] };
+  var PSHIFT = { 0: 0, 1: 1, 2: 2, 3: 2 };
+  function rep(v, n) { var a = []; for (var i = 0; i < n; i++) a.push(v); return a; }
+  function clone(p) { return JSON.parse(JSON.stringify(p)); }
+  function ext(p, o) { var q = clone(p); for (var k in o) q[k] = o[k]; return q; }
+  function centralOld() {
+    return { infl: 0.025, cost_addon: 0.0, cu_real: rep(10000, N), cu_override_lb: rep(0, N), cu_mult: rep(1, N),
+      au_real: 2500, au_factor: 1.0, ni_real: 6.75, zam_factor: 1.0, zam_overlay: 1.0, c1_factor: 1.0, fixed_share: 0.6, rg_oz: 0.075, rg_pay: 0.20,
+      kans: [225, 245].concat(rep(245, 8)), sent: rep(205, N), sent2036: 0.0, kans_au: [105].concat(rep(110, 9)), ni_kt: rep(40, N), guelb_au: [47, 47].concat(rep(0, 8)),
+      c1_kans: 2.02, c1_sent: 2.71, au_ref: 4000, c1_ni: 3.20, guelb_cost: 1500,
+      cp_reopen: 1, cp_delay: 0, cp_stock: [35].concat(rep(0, 9)), cp_mined: [15, 250].concat(rep(320, 8)),
+      c1_cp_stock: 4.08, c1_cp_ramp: 2.00, c1_cp_full: 1.60, cp_roy: 0.14, cp_min: 375, cp_taxrate: 0.25,
+      cp_restart: 250, cp_capex_ramp: 200, cp_capex_full: 250, cp_psm: 190, cp_leak: 0.10, cp_da: 0.80,
+      tt_capex: 4340, tt_capex_factor: 1.0, tt_k: 0, tt_prod: [0, 0, 0, 0, 145].concat(rep(291, 5)), tt_au_per_kt: 133 / 291,
+      c1_tt: 0.99, c1_tt_ramp: 1.33, tt_au_ref: 3000, tt_roy: 0.03, tt_taxrate: 0.25, tt_da: 0.35,
+      tt_sust: 100, tt_on: 1, pf_share: 0.55, pf_rate: 0.08, pf_tenor: 10, lock_years: 2,
+      ga: 200, rav: 35, other_inc: 0, acid_adj: 0, div_target: 1.0, zccm: 0.031, zam_taxrate: 0.30, da_zam: 0.95, da_other: 60,
+      maint: [770, 720], maint_real_after: 720, proj: [165, 115], proj_real_after: 50, wc_pct: 0.12, other_rev: 0.10,
+      rel_prepay: [250, 104].concat(rep(0, 8)), rel_rg: 45, rel_fn_per_kt: 0.25, accretion: 250,
+      r_exist: 0.084, r_new: 0.085, refi_spread: 0.0, refi: [0, 0, 1114, 0, 1291, 0, 989, 990, 0, 1486],
+      r_cash: 0.035, cash_min: 800, bank_loan: 300, bank_grace: 3, bank_years: 7,
+      debt_adj: 40, test_lim: 2.5, div_policy: 'payout', payout: 0.5, lock_lev: 2.0, lock_liq: 1000 };
+  }
+  function bank() {
+    return ext(centralOld(), { name: 'Banco', cu_real: [12125, 11023].concat(rep(10000, 8)),
+      cp_stock: [35].concat(rep(0, 9)), cp_mined: [90, 255].concat(rep(300, 8)), c1_cp_full: 1.80, c1_cp_ramp: 2.20, cp_leak: 0.375,
+      tt_prod: [0, 0, 0, 0, 90, 230, 290, 300, 300, 300], tt_sust: 118, tt_exp: rep(0, 8).concat([340, 340]),
+      overrun_sponsor: 1, div_target: 2.0, test_corp: 1, cp_cp: 1, reimb: 1, avail: 4, fwd: 1,
+      rel_prepay: [343].concat(rep(0, 9)), cp_cp_met: 2028.5, kpmc_bal: 1240, kpmc_rate: 0.09, kpmc_pay: 200, kpmc_start: 2,
+      closure: 75, closure_start: 1, n_inst: 15 });
+  }
+  function management() {
+    return ext(bank(), { name: 'Management', cu_real: [13000, 12500].concat(rep(11500, 8)),
+      kans: [240].concat(rep(260, 9)), sent: rep(215, N), cp_stock: [35].concat(rep(0, 9)), cp_mined: [110, 300].concat(rep(330, 8)),
+      tt_prod: [0, 0, 0, 0, 145].concat(rep(291, 5)) });
+  }
+  function low() {
+    return ext(bank(), { name: 'Low', cu_real: rep(7700, 3).concat(rep(8270, 7)), au_real: 2000, ni_real: 5.40,
+      zam_factor: 0.95, cp_reopen: 0, tt_capex_factor: 1.20, tt_k: 1, acid_adj: -10, refi_spread: 0.02, pf_rate: 0.10 });
+  }
+  function zroy(pt) {
+    var b = [[4000, .04], [5000, .065], [7000, .085]], tot = 0, prev = 0;
+    for (var i = 0; i < 3; i++) { tot += Math.max(0, Math.min(pt, b[i][0]) - prev) * b[i][1]; prev = b[i][0]; }
+    tot += Math.max(0, pt - 7000) * .10; return tot / pt;
+  }
+  // fractional time shift (in years) of an annual profile: a quarter's delay moves 25% of each year's volume to the next year
+  function shift(row, s) {
+    var k = Math.floor(s + 1e-9), f = s - k, o = [];
+    for (var i = 0; i < N; i++) o.push((1 - f) * (i - k >= 0 ? row[i - k] : 0) + f * (i - k - 1 >= 0 ? row[i - k - 1] : 0));
+    return o;
+  }
+  function g(p, k, d) { return p[k] === undefined ? d : p[k]; }
+  function arrs(q) {
+    var k = Math.floor(q.tt_k + 1e-9), f = q.tt_k - k, ph = PHASING[k];
+    if (f > 0) ph = ph.map(function (x, i) { return (1 - f) * x + f * PHASING[k + 1][i]; });
+    return [ph, shift(q.tt_prod, q.tt_k).map(function (x) { return x * q.tt_on; }), shift(q.cp_mined, q.cp_delay).map(function (x) { return x * q.cp_reopen; })];
+  }
+  function _run(P0, pb, s) {
+    var o = { lev_cov: [], liq: [], bank_draw: [], ebitda: [], debt: [], div: [], ns: [], bank_out: [] };
+    var A0 = arrs(P0), A1 = pb ? arrs(pb) : A0, ph = [], ttp = [], cpm = [], i;
+    for (i = 0; i < N; i++) { var A = (pb && i >= s) ? A1 : A0; ph.push(A[0][i]); ttp.push(A[1][i]); cpm.push(A[2][i]); }
+    var kpmc = g(P0, 'kpmc_bal', 0);
+    var nd_prev = BASE26.netdebt, cash_prev = BASE26.cash, gross_prev = BASE26.netdebt + BASE26.cash, pf_prev = 0;
+    var rev_prev = BASE26.revenue, refi_cum = 0, pf_cum = 0, levt_prev = BASE26.netdebt / (BASE26.ebitda - 500), trapped_prev = 0, prodyrs = 0;
+    var cumph = 0, bcum = 0, cumf = 0, bfirst = null, base = BASE26.netdebt + BASE26.cash;
+    for (i = 0; i < N; i++) {
+      var n = i + 1, p = (pb && i >= s) ? pb : P0;
+      var pidx = Math.pow(1 + p.infl, n), cidx = Math.pow(1 + p.infl + p.cost_addon, n);
+      var cu_t = p.cu_real[i] * pidx * p.cu_mult[i];
+      if (p.cu_override_lb[i] > 0) cu_t = p.cu_override_lb[i] * LB * 1000;
+      var cu = cu_t / (LB * 1000), aure = p.au_real * p.au_factor, au = aure * pidx, ni = p.ni_real * pidx;
+      var zf = p.zam_factor * p.zam_overlay, fixadj = 1 + p.fixed_share * (1 / zf - 1);
+      var kans = p.kans[i] * zf, sent = p.sent[i] * zf * (i === N - 1 ? p.sent2036 : 1);
+      var cpst = p.cp_stock[i], cm = cpm[i], tt = ttp[i], cm_prev = i > 0 ? cpm[i - 1] : 0;
+      var kl = kans * LB, sl = sent * LB, cl = cpst * LB, cml = cm * LB, tl = tt * LB;
+      var kau = p.kans_au[i] * zf, exposed = kau - (1 - p.rg_pay) * p.rg_oz * kl;
+      var adj_k = kl ? (p.au_ref - aure) * exposed / 1000 / kl : 0;
+      var c1k = p.c1_kans * p.c1_factor * fixadj * cidx + adj_k * pidx, c1s = p.c1_sent * p.c1_factor * fixadj * cidx;
+      var c1cpm = (cm < 300 ? p.c1_cp_ramp : p.c1_cp_full) * cidx, c1cps = p.c1_cp_stock * cidx;
+      var adj_t = (p.tt_au_ref - aure) * p.tt_au_per_kt / LB / 1000;
+      var c1t = (tt < 250 ? p.c1_tt_ramp : p.c1_tt) * cidx + adj_t * pidx;
+      var m_k = kl * (cu - c1k), m_s = sl * (cu - c1s);
+      var m_cp = Math.max(0, cl * (cu - c1cps)) + cml * (cu - c1cpm), m_tt = tl * (cu - c1t);
+      var nik = p.ni_kt[i], m_ni = nik * LB * (ni - p.c1_ni * cidx), m_g = p.guelb_au[i] * (au - p.guelb_cost * cidx) / 1000;
+      var tt_au = tt * p.tt_au_per_kt;
+      var rev_cu = (kl + sl + cl + cml + tl) * cu, rev_au = (kau + p.guelb_au[i] + tt_au) * au / 1000, rev_ni = nik * LB * ni;
+      var rev = (rev_cu + rev_au + rev_ni) / (1 - p.other_rev);
+      var roy_z = zroy(cu_t) * (kl + sl) * cu + p.zccm * (kl * cu + kau * au / 1000);
+      var roy_cp = cm > 0 ? p.cp_roy * Math.max(0, m_cp) : 0, roy_tt = p.tt_roy * (tl * cu + tt_au * au / 1000);
+      var ga = p.ga * cidx, frac = (((cpst > 0 || cm_prev > 0) ? 1 : 0) + (cm > 0 ? 1 : 0)) / 2, psm = p.cp_psm * cidx * (1 - frac);
+      var other = (p.other_inc + p.acid_adj) * pidx;
+      var e_z = m_k + m_s + m_ni - roy_z, e_cp = m_cp - roy_cp - psm, e_tt = m_tt - roy_tt;
+      var ebitda = e_z + e_cp + e_tt + m_g - ga - p.rav * cidx + other;
+      var release = p.rel_prepay[i] + p.rel_rg + p.rel_fn_per_kt * (cpst + cm);
+      var da_z = p.da_zam * (kl + sl) + p.da_other, da_cp = p.cp_da * (cl + cml), da_tt = p.tt_da * tl;
+      var capex_tt = ph[i] * p.tt_on * p.tt_capex * p.tt_capex_factor * cidx;
+      var idc = tt === 0 ? p.pf_rate * (pf_prev + 0.5 * p.pf_share * capex_tt) : 0;
+      var pf_draw = g(p, 'overrun_sponsor', 0) ? p.pf_share * (capex_tt / Math.max(p.tt_capex_factor, 1) + idc) : p.pf_share * (capex_tt + idc);
+      var tt_eq = capex_tt + idc - pf_draw; pf_cum += pf_draw;
+      var pf_repay = (tt >= 250 && pf_prev > 0) ? Math.min(pf_cum / p.pf_tenor, pf_prev + pf_draw) : 0;
+      var pf = pf_prev + pf_draw - pf_repay, int_pf = tt === 0 ? idc : p.pf_rate * (pf_prev - 0.5 * pf_repay);
+      var tax_z = p.zam_taxrate * Math.max(0, e_z - da_z);
+      var tax_cp = cm > 0 ? p.cp_taxrate * Math.max(0, m_cp - roy_cp - da_cp) : 0;
+      var topup = cm >= 250 ? Math.max(0, p.cp_min - roy_cp - tax_cp) : 0;
+      var tax_tt = p.tt_taxrate * Math.max(0, e_tt - da_tt - int_pf), tax = tax_z + tax_cp + topup + tax_tt;
+      var addf = Math.pow((1 + p.infl + p.cost_addon) / (1 + p.infl), n);
+      var cm_ = i < 2 ? p.maint[i] * addf : p.maint_real_after * cidx / Math.pow(1 + p.infl, 2);
+      var cpj = i < 2 ? p.proj[i] * addf : p.proj_real_after * cidx;
+      var capex_cp = cm > 0 ? (cm_prev === 0 ? p.cp_restart : (cm >= 300 ? p.cp_capex_full : p.cp_capex_ramp)) * cidx : 0;
+      var capex_tts = tt > 0 ? (p.tt_sust + g(p, 'tt_exp', rep(0, N))[i]) * cidx : 0;
+      var capex = cm_ + cpj + capex_cp + capex_tt + capex_tts, wc = p.wc_pct * (rev - rev_prev);
+      var cpy = 0; for (var j = 0; j <= i; j++) if (cpm[j] > 0) cpy++;
+      var clos = (cm > 0 && cpy > g(p, 'closure_start', 1)) ? g(p, 'closure', 0) * cidx : 0;
+      var kp_int = g(p, 'kpmc_rate', 0) * kpmc;
+      var kp_pay = (cm > 0 && cpy > g(p, 'kpmc_start', 2)) ? Math.min(kpmc + kp_int, g(p, 'kpmc_pay', 0)) : 0;
+      kpmc = kpmc + kp_int - kp_pay;
+      var nci = cm > 0 ? p.cp_leak * Math.max(0, e_cp - tax_cp - topup - capex_cp - clos - kp_pay) : 0, kp_out = 0.5 * kp_pay;
+      prodyrs = tt > 0 ? prodyrs + 1 : 0;
+      var tt_cf = tt > 0 ? (e_tt - tax_tt - capex_tts - int_pf - pf_repay) : 0;
+      var lock = (prodyrs >= 1 && prodyrs <= p.lock_years) ? 1 : 0;
+      var trap_in = lock ? Math.max(0, tt_cf) : 0, tt_release = lock ? 0 : trapped_prev, trapped = lock ? trapped_prev + trap_in : 0;
+      var fpi = ebitda - release - tax - wc - (capex - pf_draw) - nci - clos - kp_out - pf_repay - int_pf - trap_in + tt_release;
+      refi_cum += p.refi[i];
+      var red = fpi > 0 ? fpi * (1 - (levt_prev <= p.lock_lev ? p.payout : 0)) : fpi;
+      var avg = gross_prev - 0.5 * red, mab = Math.min(avg, base);
+      var int_corp = p.r_exist * mab + p.refi_spread * Math.min(refi_cum, mab) + (p.r_new + p.refi_spread) * Math.max(avg - base, 0);
+      var fcf = fpi - int_corp + p.r_cash * cash_prev, nd_pre = nd_prev - fcf;
+      var e_ex0 = ebitda - e_tt, lev_pre = (e_ex0 - release) > 0 ? nd_pre / (e_ex0 - release) : 99;
+      var mat24 = (p.refi[i + 1] || 0) + (p.refi[i + 2] || 0), liq_pre = BASE26.liquidity + cumf + fcf;
+      var div = (lev_pre <= p.lock_lev && liq_pre >= Math.max(p.lock_liq, mat24)) ? p.payout * Math.max(fcf, 0) : 0;
+      var nd = nd_pre + div, cash = Math.max(p.cash_min, -nd), gross = nd + cash;
+      var test = levt_prev;
+      cumph += (p.tt_capex_factor > 0 && p.tt_on > 0) ? ph[i] : 0;
+      var cp_ok = g(P0, 'cp_cp', 0) ? (P0.cp_reopen > 0 && g(P0, 'cp_cp_met', 0) + P0.cp_delay <= YEARS[i] + 0.5) : true;
+      var fok = p.fwd_ok ? p.fwd_ok[i] : true;
+      var bdraw = ((capex_tt > 0 || g(p, 'reimb', 0)) && cumph > 0 && test >= 0 && test <= p.test_lim && cp_ok && fok && i < g(p, 'avail', N)) ? Math.max(0, p.bank_loan * cumph - bcum) : 0;
+      bcum += bdraw;
+      if (bdraw > 0 && bfirst === null) bfirst = YEARS[i] + 0.75;
+      var ninst = g(P0, 'n_inst', 15), paid = 0;
+      if (bfirst !== null) for (var kk = 0; kk < ninst; kk++) if (bfirst + P0.bank_grace + 0.5 * kk < YEARS[i] + 1) paid++;
+      var b_out = bcum * (1 - paid / ninst);
+      cumf += fcf - div;
+      var e_ex = ebitda - e_tt, lev_cov = (e_ex - release) > 0 ? Math.max(nd, 0) / (e_ex - release) : 99;
+      o.lev_cov.push(lev_cov); o.bank_out.push(b_out); o.ns.push((e_ex - release) <= 0); o.liq.push(BASE26.liquidity + cumf + b_out); o.bank_draw.push(bdraw); o.ebitda.push(ebitda); o.debt.push(gross + pf + p.debt_adj); o.div.push(div);
+      nd_prev = nd; cash_prev = cash; gross_prev = gross; pf_prev = pf; rev_prev = rev; trapped_prev = trapped; levt_prev = lev_cov;
+    }
+    var first = N; for (i = 0; i < N; i++) if (ttp[i] > 0) { first = i; break; }
+    o.cov_lim = []; for (i = 0; i < N; i++) o.cov_lim.push(i <= first ? 3.5 : 3.0);
+    return o;
+  }
+  var PB = bank();
+  function run(p) {
+    var lim = p.test_lim, fp = [];
+    for (var i = 0; i < N; i++) {
+      var lc = _run(p, PB, i).lev_cov.map(function (v) { return v > 0 ? v : 99; });
+      fp.push(lc[i] <= lim && lc[Math.min(i + 1, N - 1)] <= lim);
+    }
+    return _run(ext(p, { fwd_ok: fp }));
+  }
+  return { bank: bank, management: management, low: low, run: run, ext: ext, YEARS: YEARS };
+})();
+if (typeof module !== 'undefined') module.exports = FQM;
+
+(function () {
+  var Y = FQM.YEARS, $ = function (id) { return document.getElementById(id); };
+  // sliders: continuous travel with small magnetic detents on reference values
+  var SL = {
+    cu: { min: 4000, max: 15000, R: 220, marks: [8270, 10000, 11500, 12230, 13570], key: [10000, 12230, 13570], q: function (v) { return Math.round(v / 100) * 100; } },
+    cd: { min: 0, max: 12, R: 0.3, marks: [0,1,2,3,4,5,6,7,8,9,10,11,12], key: [0, 4, 8, 12], q: Math.round },
+    tk: { min: 0, max: 8, R: 0.3, marks: [0,1,2,3,4,5,6,7,8], key: [0, 4, 8], q: Math.round },
+    tt: { min: 0, max: 50, R: 1.6, marks: [0, 10, 20, 30, 40, 50], key: [0, 20, 40], q: Math.round },
+    lim: { min: 2, max: 3, R: 0.045, marks: [2, 2.25, 2.5, 2.75, 3], key: [2.5], q: function (v) { return Math.round(v * 20) / 20; } } };
+  var drag = null;
+  var CASES = {
+    management: { cu: 11500, on: true, cd: 0, sh: 1, tk: 0, tt: 0, lim: 2.5, av: true },
+    bank: { cu: 10000, on: true, cd: 0, sh: 1, tk: 0, tt: 0, lim: 2.5, av: true },
+    low: { cu: 8270, on: false, cd: 0, sh: 1, tk: 4, tt: 20, lim: 2.5, av: true } };
+  var LT = { management: 11500, bank: 10000, low: 8270 };
+  var S = { k: 'bank' }, cur = null, raf = 0;
+  function setCase(k) { S = { k: k }; var c = CASES[k]; for (var x in c) S[x] = c[x]; sync(); }
+  function qlab(y, n) { var q = 2 + n; return (q % 4 + 1) + 'T ' + (y + Math.floor(q / 4)); }
+  function th(n) { var s = Math.round(Math.abs(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.'); return (n < 0 ? '−' : '') + s; }
+  function f2(v) { return v.toFixed(2).replace('.', ','); }
+  function bn(v) { return (v < 0 ? '−' : '') + (Math.abs(v) / 1000).toFixed(1).replace('.', ','); }
+
+  var EMB = window.self !== window.top || /[?&]ppt/.test(location.search);
+  if (EMB) document.documentElement.classList.add('emb');
+  function fit() {
+    var w = $('fit').clientWidth, h = window.innerHeight - (EMB ? 0 : 32), narrow = w < 560;
+    document.documentElement.classList.toggle('narrow', narrow);
+    if (!narrow) $('stage').style.transform = 'scale(' + Math.min(w / 1920, h / 1080) + ')';
+  }
+  window.addEventListener('resize', fit); fit();
+
+  ['management', 'bank', 'low'].forEach(function (k) { $('k-' + k).addEventListener('click', function () { setCase(k); }); });
+  Object.keys(SL).forEach(function (id) {
+    var c = SL[id], el = $(id), w = $('w-' + id);
+    c.marks.forEach(function (m) { var t = document.createElement('i'); if (c.key.indexOf(m) >= 0) t.className = 'k'; t.style.left = 'calc(14px + (100% - 28px) * ' + ((m - c.min) / (c.max - c.min)) + ')'; w.appendChild(t); });
+    el.addEventListener('input', function () {
+      var raw = +el.value, best = null;
+      c.marks.forEach(function (m) { if (Math.abs(raw - m) <= c.R && (best === null || Math.abs(raw - m) < Math.abs(raw - best))) best = m; });
+      if (best !== null) { el.value = best; S[id] = best; } else S[id] = c.q(raw);
+      drag = id; sync(); drag = null;
+    });
+    el.addEventListener('change', function () { el.value = S[id]; sync(); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.ref'), function (b) { b.addEventListener('click', function () { S.cu = +b.getAttribute('data-v'); sync(); }); });
+  $('cp').addEventListener('click', function () { S.on = !S.on; sync(); });
+  $('av').addEventListener('click', function () { S.av = !S.av; sync(); });
+  ['acc', 'bank'].forEach(function (v) { $('vw-' + v).addEventListener('click', function () { VIEW = v; $('vw-acc').setAttribute('aria-pressed', v === 'acc'); $('vw-bank').setAttribute('aria-pressed', v === 'bank'); sync(); }); });
+  var SH = [0.5, 0.625, 1.0];
+  [0, 1, 2].forEach(function (k) { $('sh' + k).addEventListener('click', function () { S.sh = k; sync(); }); });
+
+  function sync() {
+    var c = CASES[S.k];
+    Object.keys(SL).forEach(function (id) {
+      var el = $(id), c = SL[id]; if (id !== drag) el.value = S[id];
+      el.style.setProperty('--p', ((+el.value - c.min) / (c.max - c.min) * 100) + '%');
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('.ref'), function (b) { b.setAttribute('aria-pressed', +b.getAttribute('data-v') === S.cu); });
+    var pure = true, cc0 = CASES[S.k];
+    for (var x in cc0) if (cc0[x] !== S[x]) pure = false;
+    ['management', 'bank', 'low'].forEach(function (k) {
+      var b = $('k-' + k);
+      b.setAttribute('aria-pressed', pure && k === S.k); b.classList.toggle('mod', !pure);
+    });
+    $('custom').hidden = pure;
+    $('cu-v').innerHTML = th(S.cu) + ' USD/t <small>' + (S.cu / 2204.62).toFixed(2).replace('.', ',') + ' USD/lb</small>';
+    $('cp').setAttribute('aria-checked', S.on); $('cp-t').textContent = S.on ? 'Sí' : 'No'; $('cpbox').hidden = !S.on;
+    $('cd-v').textContent = qlab(2027, S.cd) + (S.cd ? ' (+' + S.cd + ' T)' : '');
+    [0, 1, 2].forEach(function (k) { $('sh' + k).setAttribute('aria-pressed', S.sh === k); });
+    $('pub-v').textContent = String(Math.round((1 - SH[S.sh]) * 1000) / 10).replace('.', ',') + ' %';
+    $('tk-v').textContent = qlab(2031, S.tk) + (S.tk ? ' (+' + S.tk + ' T)' : '');
+    $('tt-v').innerHTML = (S.tt ? '+' + S.tt + ' % · ' : '') + 'USD ' + th(4340 * (1 + S.tt / 100)) + ' m';
+    $('lim-v').textContent = '≤ ' + f2(S.lim) + 'x';
+    $('c-cu').classList.toggle('on', S.cu !== c.cu); $('c-cp').classList.toggle('on', S.on !== c.on || S.cd !== c.cd || S.sh !== c.sh);
+    $('c-tt').classList.toggle('on', S.tk !== c.tk || S.tt !== c.tt); $('c-lim').classList.toggle('on', S.lim !== c.lim || S.av !== c.av);
+    $('av').setAttribute('aria-checked', S.av); $('av-t').textContent = S.av ? 'Sí' : 'No';
+    var p = FQM.ext(FQM[S.k === 'bank' ? 'bank' : S.k](), {
+      cu_mult: [1, 1, S.cu / LT[S.k], S.cu / LT[S.k], S.cu / LT[S.k], S.cu / LT[S.k], S.cu / LT[S.k], S.cu / LT[S.k], S.cu / LT[S.k], S.cu / LT[S.k]],
+      cp_reopen: S.on ? 1 : 0, cp_delay: S.cd / 4, cp_leak: 1 - SH[S.sh], tt_k: S.tk / 4, tt_capex_factor: 1 + S.tt / 100, test_lim: S.lim, avail: (S.av && S.tk > 0) ? 5 : 4 });
+    AV = (S.av && S.tk > 0) ? 5 : 4;
+    var o = FQM.run(p);
+    show(o);
+  }
+
+  function result(o) {
+    var l = o.lev_cov, q = o.liq, b = Math.round(o.bank_draw.reduce(function (a, x) { return a + x; }, 0));
+    var mx = -1, mi = 0, mn = 1e12, ni = 0, br = -1;
+    l.forEach(function (v, i) { if (v > mx) { mx = v; mi = i; } if (br < 0 && v > o.cov_lim[i]) br = i; });
+    q.forEach(function (v, i) { if (v < mn) { mn = v; ni = i; } });
+    var p = $('pill'), cls, t;
+    if (b === 0) { cls = 'b'; t = 'Sin desembolso'; }
+    else if (br >= 0 || mn < 0) { cls = 'b'; t = 'Desembolso y deterioro'; }
+    else if (b < 300 || mn < 1000 || mx > 2.5) { cls = 'w'; t = 'Desembolso, holgura limitada'; }
+    else { cls = ''; t = 'Desembolso completo'; }
+    p.className = 'pill ' + cls; p.textContent = t;
+    var s = 'Banco <b>USD ' + b + ' m</b> · máx. <b>' + (o.ns[mi] ? 'n.s.' : (mx >= 10 ? '>10x' : f2(mx) + 'x')) + '</b> (' + Y[mi] + ') · liquidez mín. <b>USD ' + th(mn) + ' m</b> (' + Y[ni] + ')';
+    if (br >= 0) s += ' · covenant roto ' + Y[br];
+    $('res').innerHTML = s;
+  }
+
+  var X0 = 70, X1 = 1070, DX0 = 1180, DX1 = 1256, DT = 110, DMAX = 25000, PT = 664, PB = 760, DVMAX = 4000, T = 36, B = 290, QT = 368, QB = 570, LM = 4.5, QMIN = -4000, QMAX = 12000;
+  function xc(i) { return X0 + (X1 - X0) * (i + .5) / 10; }
+  function yl(v) { return B - (B - T) * Math.min(Math.max(v, 0), LM) / LM; }
+  var Q0 = QT + (QB - QT) * QMAX / (QMAX - QMIN);
+  function yq(v) { v = Math.max(QMIN, Math.min(QMAX, v)); return Q0 - (QB - QT) * v / (QMAX - QMIN); }
+  function tx(x, y, t, a) { return '<text x="' + x + '" y="' + y + '" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="22" ' + (a || '') + '>' + t + '</text>'; }
+  var NS = [], AV = 4, VIEW = 'acc', BK = { d: [], p: [], i: [] }, RATE = 0.075, BKT = 0;
+  function draw(l, q, cl, lim, d, dv, da) {
+    var s = '', i, st = 0;
+    for (i = 0; i < 10; i++) if (cl[i] === 3.5) st = i + 1;
+    for (i = 0; i <= 4; i++) s += '<line x1="' + X0 + '" x2="' + X1 + '" y1="' + yl(i) + '" y2="' + yl(i) + '" stroke="#E4E0D7"/>' + tx(X0 - 12, yl(i) + 8, i + 'x', 'text-anchor="end" fill="#4A5568"');
+    var xm = (xc(st - 1) + xc(Math.min(st, 9))) / 2, xt = (xc(AV - 1) + xc(AV)) / 2;
+    s += '<path d="M' + X0 + ' ' + yl(3.5) + 'H' + (st >= 10 ? X1 : xm + 'V' + yl(3) + 'H' + X1) + '" fill="none" stroke="#1C2430" stroke-width="3"/>';
+    s += '<line x1="' + X0 + '" x2="' + xt + '" y1="' + yl(lim) + '" y2="' + yl(lim) + '" stroke="#B7791F" stroke-width="3" stroke-dasharray="10 7"/>';
+    s += '<polyline points="' + l.map(function (v, k) { return xc(k) + ',' + yl(v); }).join(' ') + '" fill="none" stroke="#C8102E" stroke-width="4" stroke-linejoin="round"/>';
+    l.forEach(function (v, k) {
+      var o = v > cl[k], lab = NS[k] ? 'n.s.' : (v >= 10 ? '>10x' : (v > LM ? v.toFixed(1).replace('.', ',') + 'x' : f2(v)));
+      s += '<circle cx="' + xc(k) + '" cy="' + yl(v) + '" r="' + (o ? 9 : 7) + '" fill="' + (o ? '#C8102E' : '#FDFCFA') + '" stroke="#C8102E" stroke-width="3.5"/>';
+      s += tx(xc(k), v > LM ? yl(v) + 34 : yl(v) - 16, lab, 'text-anchor="middle" font-weight="600" fill="#1C2430"');
+    });
+    Y.forEach(function (y, k) { s += tx(xc(k), B + 38, y, 'text-anchor="middle" fill="#1C2430"'); });
+    s += '<line x1="' + X0 + '" x2="' + X1 + '" y1="' + Q0 + '" y2="' + Q0 + '" stroke="#8A93A3" stroke-width="1.5"/>';
+    s += tx(X0 - 12, Q0 + 8, '0', 'text-anchor="end" fill="#4A5568"');
+    var bw = (X1 - X0) / 10 * .56;
+    q.forEach(function (v, k) {
+      var y = yq(v), n = v < 0;
+      s += '<rect x="' + (xc(k) - bw / 2) + '" y="' + (n ? Q0 : y) + '" width="' + bw + '" height="' + Math.max(1, Math.abs(y - Q0)) + '" fill="' + (n ? '#E58C9B' : '#8FA3BF') + '"/>';
+      var inside = !n && (Q0 - y) > 40; s += tx(xc(k), n ? Math.min(y + 26, QB + 24) : (inside ? y + 28 : Math.max(y - 8, QT - 6)), bn(v), 'text-anchor="middle" ' + (inside ? 'font-weight="600" ' : '') + 'fill="' + (n ? '#C8102E' : (inside ? '#FFFFFF' : '#4A5568')) + '"');
+    });
+    s += '<polyline points="' + d.map(function (v, k) { return xc(k) + ',' + yq(v); }).join(' ') + '" fill="none" stroke="#1B2538" stroke-width="3.5" stroke-linejoin="round"/>';
+    d.forEach(function (v, k) {
+      s += '<circle cx="' + xc(k) + '" cy="' + yq(v) + '" r="5" fill="#1B2538"/>';
+      if (k === 0) s += '<rect x="' + (xc(k) - 42) + '" y="' + (yq(v) - 50) + '" width="84" height="30" fill="#1B2538"/>' + tx(xc(k), yq(v) - 27, bn(v) + (v > QMAX ? '+' : ''), 'text-anchor="middle" font-weight="600" fill="#FFFFFF"');
+      if (k === 9) s += '<rect x="' + (xc(k) + 16) + '" y="' + (yq(v) - 15) + '" width="78" height="30" fill="#1B2538"/>' + tx(xc(k) + 55, yq(v) + 8, bn(v) + (v > QMAX ? '+' : ''), 'text-anchor="middle" font-weight="600" fill="#FFFFFF"');
+    });
+    // total dividends to shareholders over the period
+    s += '<line x1="' + (DX0 - 34) + '" x2="' + (DX0 - 34) + '" y1="' + T + '" y2="' + PB + '" stroke="#D6D2C8" stroke-width="1.5"/>';
+    var bw2 = (X1 - X0) / 10 * .56;
+    if (VIEW === 'acc') {
+      // annual dividends (shareholders' view)
+      s += tx(X0 - 56, PT - 22, 'Dividendos anuales (USD bn)', 'font-weight="600" fill="#2F7D5B"');
+      s += '<line x1="' + X0 + '" x2="' + X1 + '" y1="' + PB + '" y2="' + PB + '" stroke="#8A93A3" stroke-width="1.5"/>';
+      da.forEach(function (v, k) {
+        var h = (PB - PT) * Math.min(Math.max(v, 0), DVMAX) / DVMAX;
+        if (h > 0.5) s += '<rect x="' + (xc(k) - bw2 / 2) + '" y="' + (PB - h) + '" width="' + bw2 + '" height="' + h + '" fill="#2F7D5B"/>';
+        s += tx(xc(k), PB - h - 8, v < 50 ? '0' : bn(v) + (v > DVMAX ? '+' : ''), 'text-anchor="middle" fill="' + (v < 50 ? '#8A93A3' : '#1C2430') + '"' + (v < 50 ? '' : ' font-weight="600"'));
+      });
+    } else {
+      // the Bank's loan: disbursements below zero, principal and interest above (USD m, own scale)
+      var Z = PT + (PB - PT) * 0.38, SC = (PB - PT) / 230;
+      var tD = BK.d.reduce(function (a, x) { return a + x; }, 0), tP = BK.p.reduce(function (a, x) { return a + x; }, 0), tI = BK.i.reduce(function (a, x) { return a + x; }, 0);
+      s += tx(X0 - 56, PT - 22, 'Préstamo del Banco (USD m): <tspan fill="#1B2538">desembolso ' + th(tD) + '</tspan> · <tspan fill="#C8102E">principal ' + th(tP) + '</tspan> · <tspan fill="#D0607A">intereses ~' + th(tI) + '</tspan>' + (tD - tP > 1 ? ' · pendiente 2036: ' + th(tD - tP) : ''), 'font-weight="600" fill="#1B2538"');
+      s += '<line x1="' + X0 + '" x2="' + X1 + '" y1="' + Z + '" y2="' + Z + '" stroke="#8A93A3" stroke-width="1.5"/>';
+      for (var k = 0; k < 10; k++) {
+        var d = BK.d[k], p = BK.p[k], it = BK.i[k];
+        if (d > 0.5) {
+          s += '<rect x="' + (xc(k) - bw2 / 2) + '" y="' + Z + '" width="' + bw2 + '" height="' + d * SC + '" fill="#1B2538"/>';
+          s += tx(xc(k), Z + d * SC + 22, '−' + th(d), 'text-anchor="middle" font-weight="600" fill="#1B2538"');
+        }
+        if (p + it > 0.5) {
+          s += '<rect x="' + (xc(k) - bw2 / 2) + '" y="' + (Z - p * SC) + '" width="' + bw2 + '" height="' + p * SC + '" fill="#C8102E"/>';
+          s += '<rect x="' + (xc(k) - bw2 / 2) + '" y="' + (Z - (p + it) * SC) + '" width="' + bw2 + '" height="' + it * SC + '" fill="#E58C9B"/>';
+          s += tx(xc(k), Z - (p + it) * SC - 6, th(p + it), 'text-anchor="middle" fill="#1C2430"');
+        }
+      }
+    }
+    s += tx((DX0 + DX1) / 2, T + 4, 'Dividendos', 'text-anchor="middle" font-weight="600" fill="#1C2430"') + tx((DX0 + DX1) / 2, T + 32, '2027–36', 'text-anchor="middle" fill="#4A5568"');
+    var dy = PB - (PB - DT) * Math.min(dv, DMAX) / DMAX;
+    s += '<rect x="' + DX0 + '" y="' + DT + '" width="' + (DX1 - DX0) + '" height="' + (PB - DT) + '" fill="#EDEAE3"/>';
+    s += '<rect x="' + DX0 + '" y="' + dy + '" width="' + (DX1 - DX0) + '" height="' + Math.max(PB - dy, 1) + '" fill="#2F7D5B"/>';
+    s += tx((DX0 + DX1) / 2, Math.min(dy - 10, PB - 10), bn(dv) + (dv > DMAX ? '+' : '') + ' bn', 'text-anchor="middle" font-weight="600" font-size="26" fill="#1C2430"');
+    if (BKT > 0 && dv > 0) s += tx(1278, PB + 28, String(Math.round(dv / BKT * 10) / 10).replace('.', ',') + '× el préstamo', 'text-anchor="end" font-size="18" fill="#4A5568"');
+    $('g').innerHTML = s;
+  }
+  function show(o) {
+    result(o); NS = o.ns;
+    BK = { d: o.bank_draw.slice(), p: [], i: [] }; BKT = o.bank_draw.reduce(function (a, x) { return a + x; }, 0);
+    for (var j = 0; j < 10; j++) { var prev = j ? o.bank_out[j - 1] : 0; BK.p.push(Math.max(0, prev + o.bank_draw[j] - o.bank_out[j])); BK.i.push(RATE * (prev + o.bank_out[j]) / 2); }
+    var to = { l: o.lev_cov.slice(), q: o.liq.slice(), d: o.debt.slice(), v: o.div.reduce(function (a, x) { return a + x; }, 0), a: o.div.slice() }, cl = o.cov_lim, lim = S.lim;
+    if (!cur || matchMedia('(prefers-reduced-motion: reduce)').matches) { cur = to; draw(cur.l, cur.q, cl, lim, cur.d, cur.v, cur.a); return; }
+    var fr = cur, t0 = performance.now(); cancelAnimationFrame(raf);
+    (function step(t) {
+      var e = Math.min(1, (t - t0) / 380); e = 1 - Math.pow(1 - e, 3);
+      cur = { l: fr.l.map(function (v, k) { var a = Math.min(v, 6), b = Math.min(to.l[k], 6); return e < 1 ? a + (b - a) * e : to.l[k]; }), q: fr.q.map(function (v, k) { return v + (to.q[k] - v) * e; }), d: fr.d.map(function (v, k) { return v + (to.d[k] - v) * e; }), v: fr.v + (to.v - fr.v) * e, a: fr.a.map(function (v, k) { return v + (to.a[k] - v) * e; }) };
+      draw(cur.l, cur.q, cl, lim, cur.d, cur.v, cur.a); if (e < 1) raf = requestAnimationFrame(step);
+    })(t0);
+  }
+  setCase('bank');
+})();
+</script>
+
+</body>
+</html>
