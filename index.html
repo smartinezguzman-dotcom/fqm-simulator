@@ -37,6 +37,8 @@ h1 { font-family: var(--display); font-size: 54px; font-weight: 600; line-height
 .case[aria-pressed="true"] span { color: #C9D1DE; }
 .case.mod { background: #E9E6DF; border-color: #E0DCD3; color: #9AA0AA; }
 .case.mod span { color: #A7ACB4; }
+.case.mod.base { border: 2px dashed #8A919C; color: #4A5260; }
+.case.mod.base span { color: #6B7380; }
 .cases { position: relative; }
 #custom { position: absolute; right: 0; top: -26px; margin: 0; font-size: 15px; font-weight: 600; color: #fff; background: var(--red); padding: 2px 10px; pointer-events: none; white-space: nowrap; }
 .c { background: var(--card); padding: 8px 20px 8px; border-top: 4px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
@@ -343,6 +345,13 @@ if (typeof module !== 'undefined') module.exports = FQM;
     low: { cu: 8270, on: false, cd: 0, sh: 1, tk: 4, tt: 20, lim: 2.5, av: true } };
   var LT = { management: 11500, bank: 10000, low: 8270 };
   var S = { k: 'bank' }, cur = null, raf = 0;
+  var NAMES = { management: 'Management', bank: 'Banco', low: 'Low' };
+  // two scenarios are the same if every lever that the model uses is the same
+  function same(a, c) {
+    if (a.cu !== c.cu || a.on !== c.on || a.tk !== c.tk || a.tt !== c.tt || a.lim !== c.lim) return false;
+    if (a.on && (a.cd !== c.cd || a.sh !== c.sh)) return false;
+    if (a.tk > 0 && a.av !== c.av) return false;
+    return true; }
   function setCase(k) { S = { k: k }; var c = CASES[k]; for (var x in c) S[x] = c[x]; sync(); }
   function qlab(y, n) { var q = 2 + n; return (q % 4 + 1) + 'T ' + (y + Math.floor(q / 4)); }
   function th(n) { var s = Math.round(Math.abs(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.'); return (n < 0 ? '−' : '') + s; }
@@ -378,19 +387,20 @@ if (typeof module !== 'undefined') module.exports = FQM;
   [0, 1, 2].forEach(function (k) { $('sh' + k).addEventListener('click', function () { S.sh = k; sync(); }); });
 
   function sync() {
+    // levers set by hand to a case's values: that case becomes the base (its copper 2027-28, gold, nickel, Zambia)
+    if (!same(S, CASES[S.k])) ['bank', 'management', 'low'].forEach(function (k) { if (same(S, CASES[k])) S.k = k; });
     var c = CASES[S.k];
     Object.keys(SL).forEach(function (id) {
       var el = $(id), c = SL[id]; if (id !== drag) el.value = S[id];
       el.style.setProperty('--p', ((+el.value - c.min) / (c.max - c.min) * 100) + '%');
     });
     Array.prototype.forEach.call(document.querySelectorAll('.ref'), function (b) { b.setAttribute('aria-pressed', +b.getAttribute('data-v') === S.cu); });
-    var pure = true, cc0 = CASES[S.k];
-    for (var x in cc0) if (cc0[x] !== S[x]) pure = false;
+    var pure = same(S, CASES[S.k]);
     ['management', 'bank', 'low'].forEach(function (k) {
       var b = $('k-' + k);
-      b.setAttribute('aria-pressed', pure && k === S.k); b.classList.toggle('mod', !pure);
+      b.setAttribute('aria-pressed', pure && k === S.k); b.classList.toggle('mod', !pure); b.classList.toggle('base', !pure && k === S.k);
     });
-    $('custom').hidden = pure;
+    $('custom').hidden = pure; $('custom').textContent = 'Escenario propio · base ' + NAMES[S.k];
     $('cu-v').innerHTML = th(S.cu) + ' USD/t <small>' + (S.cu / 2204.62).toFixed(2).replace('.', ',') + ' USD/lb</small>';
     $('cp').setAttribute('aria-checked', S.on); $('cp-t').textContent = S.on ? 'Sí' : 'No'; $('cpbox').hidden = !S.on;
     $('cd-v').textContent = qlab(2027, S.cd) + (S.cd ? ' (+' + S.cd + ' T)' : '');
